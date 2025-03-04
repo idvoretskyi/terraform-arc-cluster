@@ -1,4 +1,3 @@
-
 resource "kubernetes_namespace" "arc_system" {
   count = var.create_namespace ? 1 : 0
 
@@ -23,6 +22,24 @@ resource "kubernetes_secret" "github_token" {
   type = "Opaque"
 }
 
+# Install cert-manager with CRDs
+resource "helm_release" "cert_manager" {
+  name       = "cert-manager"
+  repository = "https://charts.jetstack.io"
+  chart      = "cert-manager"
+  version    = var.cert_manager_version
+  namespace  = var.create_namespace ? kubernetes_namespace.arc_system[0].metadata[0].name : var.namespace
+
+  set {
+    name  = "installCRDs"
+    value = "true"
+  }
+
+  values = [var.cert_manager_values]
+
+  depends_on = [kubernetes_namespace.arc_system]
+}
+
 resource "helm_release" "actions_runner_controller" {
   name       = "actions-runner-controller"
   repository = "https://actions-runner-controller.github.io/actions-runner-controller"
@@ -40,9 +57,10 @@ resource "helm_release" "actions_runner_controller" {
     value = kubernetes_secret.github_token.metadata[0].name
   }
 
-  values = var.helm_values
+  values = [var.helm_values]
 
-  depends_on = [kubernetes_secret.github_token]
+  # Update dependencies
+  depends_on = [kubernetes_secret.github_token, helm_release.cert_manager]
 }
 
 resource "kubernetes_manifest" "runner_deployment" {

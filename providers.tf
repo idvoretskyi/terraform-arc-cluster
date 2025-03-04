@@ -1,14 +1,25 @@
+terraform {
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.0"
+    }
+  }
+  required_version = ">= 1.0.0"
+}
 
 provider "kubernetes" {
-  # Configuration options can be provided here or via environment variables/config files
-  # config_path    = "~/.kube/config"
-  # config_context = "my-context"
+  config_path    = var.kube_config_path
+  config_context = var.kube_config_context
 }
 
 provider "helm" {
   kubernetes {
-    # Configuration options can be provided here or via environment variables/config files
-    # config_path    = "~/.kube/config"
-    # config_context = "my-context"
+    config_path    = var.kube_config_path
+    config_context = var.kube_config_context
   }
 }

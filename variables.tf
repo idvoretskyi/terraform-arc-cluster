@@ -1,4 +1,3 @@
-
 variable "namespace" {
   description = "Kubernetes namespace for Actions Runner Controller"
   type        = string
@@ -64,4 +63,28 @@ variable "runner_autoscalers" {
     metrics           = list(map(any))
   }))
   default = []
+}
+
+variable "kube_config_path" {
+  description = "Path to the kubeconfig file"
+  type        = string
+  default     = "~/.kube/config"
+}
+
+variable "kube_config_context" {
+  description = "Context to use from the kubeconfig file"
+  type        = string
+  default     = ""
+}
+
+variable "cert_manager_version" {
+  description = "Version of cert-manager Helm chart"
+  type        = string
+  default     = "v1.12.0"  # Use the latest stable version
+}
+
+variable "cert_manager_values" {
+  description = "Values for cert-manager Helm chart"
+  type        = string
+  default     = ""
 }
