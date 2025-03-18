@@ -1,3 +1,6 @@
+#############################
+# Namespace Configuration
+#############################
 resource "kubernetes_namespace" "arc_system" {
   count = var.create_namespace ? 1 : 0
 
@@ -9,6 +12,9 @@ resource "kubernetes_namespace" "arc_system" {
   }
 }
 
+#############################
+# GitHub Authentication
+#############################
 resource "kubernetes_secret" "github_token" {
   metadata {
     name      = "controller-manager"
@@ -22,7 +28,21 @@ resource "kubernetes_secret" "github_token" {
   type = "Opaque"
 }
 
-# Install cert-manager with CRDs
+#############################
+# Cert Manager Installation
+#############################
+locals {
+  # Only add tolerations if explicitly requested
+  arch_toleration = var.add_arch_tolerations ? [
+    {
+      key      = "kubernetes.io/arch"
+      operator = "Equal"
+      value    = var.node_architecture
+      effect   = "NoSchedule"
+    }
+  ] : []
+}
+
 resource "helm_release" "cert_manager" {
   name       = "cert-manager"
   repository = "https://charts.jetstack.io"
@@ -35,11 +55,47 @@ resource "helm_release" "cert_manager" {
     value = "true"
   }
 
+  # Only add architecture tolerations if requested
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "tolerations[0].key"
+      value = "kubernetes.io/arch"
+    }
+  }
+  
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "tolerations[0].operator"
+      value = "Equal"
+    }
+  }
+  
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "tolerations[0].value"
+      value = var.node_architecture
+    }
+  }
+  
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "tolerations[0].effect"
+      value = "NoSchedule"
+    }
+  }
+
   values = [var.cert_manager_values]
 
   depends_on = [kubernetes_namespace.arc_system]
 }
 
+#############################
+# Actions Runner Controller
+#############################
 resource "helm_release" "actions_runner_controller" {
   name       = "actions-runner-controller"
   repository = "https://actions-runner-controller.github.io/actions-runner-controller"
@@ -57,12 +113,47 @@ resource "helm_release" "actions_runner_controller" {
     value = kubernetes_secret.github_token.metadata[0].name
   }
 
+  # Only add architecture tolerations if requested
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "tolerations[0].key"
+      value = "kubernetes.io/arch"
+    }
+  }
+  
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "tolerations[0].operator"
+      value = "Equal"
+    }
+  }
+  
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "tolerations[0].value"
+      value = var.node_architecture
+    }
+  }
+  
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "tolerations[0].effect"
+      value = "NoSchedule"
+    }
+  }
+
   values = [var.helm_values]
 
-  # Update dependencies
   depends_on = [kubernetes_secret.github_token, helm_release.cert_manager]
 }
 
+#############################
+# Runner Deployments
+#############################
 resource "kubernetes_manifest" "runner_deployment" {
   count = length(var.runner_deployments)
   manifest = {
@@ -75,12 +166,15 @@ resource "kubernetes_manifest" "runner_deployment" {
     spec = {
       replicas = var.runner_deployments[count.index].replicas
       template = {
-        spec = {
-          repository = var.runner_deployments[count.index].repository
-          labels     = var.runner_deployments[count.index].labels
-          env        = var.runner_deployments[count.index].env
-          resources  = var.runner_deployments[count.index].resources
-        }
+        spec = merge(
+          {
+            repository = var.runner_deployments[count.index].repository
+            labels     = var.runner_deployments[count.index].labels
+            env        = var.runner_deployments[count.index].env
+            resources  = var.runner_deployments[count.index].resources
+          },
+          var.add_arch_tolerations ? { tolerations = local.arch_toleration } : {}
+        )
       }
     }
   }
@@ -88,6 +182,9 @@ resource "kubernetes_manifest" "runner_deployment" {
   depends_on = [helm_release.actions_runner_controller]
 }
 
+#############################
+# Runner Autoscalers
+#############################
 resource "kubernetes_manifest" "runner_autoscaler" {
   count = length(var.runner_autoscalers)
   manifest = {
