@@ -29,7 +29,13 @@ resource "kubernetes_namespace" "arc_system" {
 #############################
 # GitHub Authentication
 #############################
+locals {
+  using_github_app = var.github_token == "" && var.github_app_auth != null
+}
+
 resource "kubernetes_secret" "github_token" {
+  count = var.github_token != "" ? 1 : 0
+  
   metadata {
     name      = "controller-manager"
     namespace = var.create_namespace ? kubernetes_namespace.arc_system[0].metadata[0].name : var.namespace
@@ -37,6 +43,23 @@ resource "kubernetes_secret" "github_token" {
 
   data = {
     github_token = var.github_token
+  }
+
+  type = "Opaque"
+}
+
+resource "kubernetes_secret" "github_app_auth" {
+  count = local.using_github_app ? 1 : 0
+  
+  metadata {
+    name      = "controller-manager-github-app"
+    namespace = var.create_namespace ? kubernetes_namespace.arc_system[0].metadata[0].name : var.namespace
+  }
+
+  data = {
+    github_app_id             = var.github_app_auth.app_id
+    github_app_installation_id = var.github_app_auth.installation_id
+    github_app_private_key    = var.github_app_auth.private_key
   }
 
   type = "Opaque"
@@ -57,7 +80,10 @@ locals {
   ] : []
 }
 
+# Note: cert-manager is no longer strictly required for ARC 0.11.0+
+# But we include it as an option as it may be useful for other purposes
 resource "helm_release" "cert_manager" {
+  count      = var.install_cert_manager ? 1 : 0
   name       = "cert-manager"
   repository = "https://charts.jetstack.io"
   chart      = "cert-manager"
@@ -111,20 +137,47 @@ resource "helm_release" "cert_manager" {
 # Actions Runner Controller
 #############################
 resource "helm_release" "actions_runner_controller" {
-  name       = "actions-runner-controller"
-  repository = "https://actions-runner-controller.github.io/actions-runner-controller"
-  chart      = "actions-runner-controller"
+  name       = "gha-runner-scale-set-controller"
+  repository = "oci://ghcr.io/actions/actions-runner-controller-charts"
+  chart      = "gha-runner-scale-set-controller"
   version    = var.helm_chart_version
   namespace  = var.create_namespace ? kubernetes_namespace.arc_system[0].metadata[0].name : var.namespace
 
-  set {
-    name  = "authSecret.create"
-    value = "false"
+  # GitHub authentication - either token or GitHub App
+  dynamic "set" {
+    for_each = var.github_token != "" ? [1] : []
+    content {
+      name  = "authSecret.github_token"
+      value = var.github_token
+    }
   }
 
+  dynamic "set" {
+    for_each = local.using_github_app ? [1] : []
+    content {
+      name  = "authSecret.create"
+      value = "false"
+    }
+  }
+
+  dynamic "set" {
+    for_each = local.using_github_app ? [1] : []
+    content {
+      name  = "authSecret.name"
+      value = kubernetes_secret.github_app_auth[0].metadata[0].name
+    }
+  }
+
+  # Enable metrics
   set {
-    name  = "authSecret.name"
-    value = kubernetes_secret.github_token.metadata[0].name
+    name  = "metrics.enabled"
+    value = "true"
+  }
+  
+  # Configure metrics
+  set {
+    name  = "metrics.serviceMonitor.enabled"
+    value = "true"
   }
 
   # Only add architecture tolerations if requested
@@ -162,61 +215,170 @@ resource "helm_release" "actions_runner_controller" {
 
   values = [var.helm_values]
 
-  depends_on = [kubernetes_secret.github_token, helm_release.cert_manager]
+  # In ARC 0.11.0, cert-manager is no longer required as a prerequisite
+  depends_on = var.install_cert_manager ? [helm_release.cert_manager[0], kubernetes_namespace.arc_system] : [kubernetes_namespace.arc_system]
 }
 
 #############################
-# Runner Deployments
+# Runner Scale Sets
 #############################
-resource "kubernetes_manifest" "runner_deployment" {
-  count = length(var.runner_deployments)
-  manifest = {
-    apiVersion = "actions.summerwind.dev/v1alpha1"
-    kind       = "RunnerDeployment"
-    metadata = {
-      name      = var.runner_deployments[count.index].name
-      namespace = var.create_namespace ? kubernetes_namespace.arc_system[0].metadata[0].name : var.namespace
+resource "helm_release" "runner_scale_set" {
+  count      = length(var.runner_deployments)
+  name       = var.runner_deployments[count.index].name
+  repository = "oci://ghcr.io/actions/actions-runner-controller-charts"
+  chart      = "gha-runner-scale-set"
+  version    = var.helm_chart_version
+  namespace  = var.create_namespace ? kubernetes_namespace.arc_system[0].metadata[0].name : var.namespace
+
+  set {
+    name  = "githubConfigUrl"
+    value = "https://github.com/${var.runner_deployments[count.index].repository}"
+  }
+
+  # GitHub authentication - either token or GitHub App
+  dynamic "set" {
+    for_each = var.github_token != "" ? [1] : []
+    content {
+      name  = "githubConfigSecret.github_token"
+      value = var.github_token
     }
-    spec = {
-      replicas = var.runner_deployments[count.index].replicas
-      template = {
-        spec = merge(
-          {
-            repository = var.runner_deployments[count.index].repository
-            labels     = var.runner_deployments[count.index].labels
-            env        = var.runner_deployments[count.index].env
-            resources  = var.runner_deployments[count.index].resources
-          },
-          var.add_arch_tolerations ? { tolerations = local.arch_toleration } : {}
-        )
-      }
+  }
+  
+  dynamic "set" {
+    for_each = local.using_github_app ? [1] : []
+    content {
+      name  = "githubConfigSecret.github_app_id"
+      value = var.github_app_auth.app_id
+    }
+  }
+  
+  dynamic "set" {
+    for_each = local.using_github_app ? [1] : []
+    content {
+      name  = "githubConfigSecret.github_app_installation_id"
+      value = var.github_app_auth.installation_id
+    }
+  }
+  
+  dynamic "set" {
+    for_each = local.using_github_app ? [1] : []
+    content {
+      name  = "githubConfigSecret.github_app_private_key"
+      value = var.github_app_auth.private_key
+    }
+  }
+
+  # Configure runner scaling settings
+  set {
+    name  = "maxRunners"
+    value = local.max_runners_value
+  }
+
+  set {
+    name  = "minRunners"
+    value = try(local.runner_deployment_map[var.runner_deployments[count.index].name].min_replicas, 1)
+  }
+
+  # Enable metrics for listeners
+  set {
+    name  = "listenerMetrics.enabled"
+    value = "true"
+  }
+  
+  # Configure specific metrics to be collected (required in ARC 0.11.0)
+  set {
+    name  = "listenerMetrics.prometheusMetrics"
+    value = "{gha_desired_runners: true, gha_idle_runners: true, gha_registered_runners: true, gha_job_execution_duration_seconds: true, gha_job_startup_duration_seconds: true}"
+  }
+
+  # Set runner labels
+  set {
+    name  = "labels"
+    value = join(",", coalesce(var.runner_deployments[count.index].labels, ["self-hosted", "terraform-managed"]))
+  }
+  
+  # Add runner resources if specified
+  dynamic "set" {
+    for_each = var.runner_deployments[count.index].resources != null ? [1] : []
+    content {
+      name  = "template.spec.containers[0].resources.limits.cpu"
+      value = var.runner_deployments[count.index].resources.limits.cpu
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.runner_deployments[count.index].resources != null ? [1] : []
+    content {
+      name  = "template.spec.containers[0].resources.limits.memory"
+      value = var.runner_deployments[count.index].resources.limits.memory
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.runner_deployments[count.index].resources != null ? [1] : []
+    content {
+      name  = "template.spec.containers[0].resources.requests.cpu"
+      value = var.runner_deployments[count.index].resources.requests.cpu
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.runner_deployments[count.index].resources != null ? [1] : []
+    content {
+      name  = "template.spec.containers[0].resources.requests.memory"
+      value = var.runner_deployments[count.index].resources.requests.memory
+    }
+  }
+
+  # Set environment variables
+  dynamic "set" {
+    for_each = var.runner_deployments[count.index].env != null ? var.runner_deployments[count.index].env : []
+    content {
+      name  = "template.spec.containers[0].env[${set.key}].name"
+      value = set.value.name
+    }
+  }
+
+  dynamic "set" {
+    for_each = var.runner_deployments[count.index].env != null ? var.runner_deployments[count.index].env : []
+    content {
+      name  = "template.spec.containers[0].env[${set.key}].value"
+      value = set.value.value
+    }
+  }
+
+  # Add architecture tolerations if requested
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "template.spec.tolerations[0].key"
+      value = "kubernetes.io/arch"
+    }
+  }
+  
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "template.spec.tolerations[0].operator"
+      value = "Equal"
+    }
+  }
+  
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "template.spec.tolerations[0].value"
+      value = var.node_architecture
+    }
+  }
+  
+  dynamic "set" {
+    for_each = var.add_arch_tolerations ? [1] : []
+    content {
+      name  = "template.spec.tolerations[0].effect"
+      value = "NoSchedule"
     }
   }
 
   depends_on = [helm_release.actions_runner_controller]
-}
-
-#############################
-# Runner Autoscalers
-#############################
-resource "kubernetes_manifest" "runner_autoscaler" {
-  count = length(var.runner_autoscalers)
-  manifest = {
-    apiVersion = "actions.summerwind.dev/v1alpha1"
-    kind       = "HorizontalRunnerAutoscaler"
-    metadata = {
-      name      = var.runner_autoscalers[count.index].name
-      namespace = var.create_namespace ? kubernetes_namespace.arc_system[0].metadata[0].name : var.namespace
-    }
-    spec = {
-      scaleTargetRef = {
-        name = var.runner_autoscalers[count.index].target_deployment
-      }
-      minReplicas = var.runner_autoscalers[count.index].min_replicas
-      maxReplicas = var.runner_autoscalers[count.index].max_replicas
-      metrics     = var.runner_autoscalers[count.index].metrics
-    }
-  }
-
-  depends_on = [kubernetes_manifest.runner_deployment]
 }

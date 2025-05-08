@@ -30,13 +30,25 @@ variable "github_token" {
   description = "GitHub Personal Access Token with appropriate permissions"
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "github_app_auth" {
+  description = "GitHub App authentication configuration. Only used if github_token is not provided."
+  type = object({
+    app_id             = string
+    installation_id    = string
+    private_key        = string
+  })
+  default = null
+  sensitive = true
 }
 
 # Helm chart configuration
 variable "helm_chart_version" {
   description = "Version of the ARC Helm chart"
   type        = string
-  default     = "0.23.5"
+  default     = "0.11.0"
 }
 
 variable "helm_values" {
@@ -55,6 +67,12 @@ variable "cert_manager_values" {
   description = "Values for cert-manager Helm chart"
   type        = string
   default     = ""
+}
+
+variable "install_cert_manager" {
+  description = "Whether to install cert-manager (no longer required for ARC 0.11.0+)"
+  type        = bool
+  default     = true
 }
 
 # Node architecture configuration
