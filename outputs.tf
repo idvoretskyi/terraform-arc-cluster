@@ -19,7 +19,7 @@ output "namespace" {
 
 output "cert_manager_release_name" {
   description = "The name of the cert-manager Helm release"
-  value       = helm_release.cert_manager.name
+  value       = var.install_cert_manager ? helm_release.cert_manager[0].name : null
 }
 
 output "arc_release_name" {
@@ -27,12 +27,7 @@ output "arc_release_name" {
   value       = helm_release.actions_runner_controller.name
 }
 
-output "runner_deployments" {
-  description = "The deployed runner deployments"
-  value       = [for rd in kubernetes_manifest.runner_deployment : rd.manifest.metadata.name]
-}
-
-output "runner_autoscalers" {
-  description = "The deployed runner autoscalers"
-  value       = [for ra in kubernetes_manifest.runner_autoscaler : ra.manifest.metadata.name]
+output "runner_scale_sets" {
+  description = "The deployed runner scale sets"
+  value       = [for rss in helm_release.runner_scale_set : rss.name]
 }

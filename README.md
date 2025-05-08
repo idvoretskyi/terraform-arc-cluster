@@ -4,9 +4,10 @@ This Terraform module deploys the [GitHub Actions Runner Controller](https://git
 
 ## Features
 
-- Deploys cert-manager as a dependency
-- Configures GitHub token authentication
-- Supports custom runner deployments with optional autoscaling
+- Uses the latest ARC 0.11.0 with Autoscaling Runner Scale Sets mode
+- Optional cert-manager deployment (no longer required with ARC 0.11.0+)
+- Configures GitHub token or GitHub App authentication
+- Supports custom runner scale sets with built-in autoscaling
 - Cross-architecture support (amd64/arm64)
 - Customizable namespace and configuration
 
@@ -29,14 +30,22 @@ provider "helm" {
 module "arc" {
   source = "github.com/idvoretskyi/Terraform-ARC-cluster"
   
+  # Authentication - use either GitHub PAT
   github_token = "ghp_your_github_token"
   
-  # Optional: Configure runner deployments
+  # OR GitHub App authentication
+  # github_app_auth = {
+  #   app_id          = "123456"
+  #   installation_id = "12345678"
+  #   private_key     = file("${path.module}/github-app-key.pem")
+  # }
+  
+  # Optional: Configure runner scale sets
   runner_deployments = [
     {
-      name       = "runner-deployment"
+      name       = "runner-scale-set"
       repository = "my-org/my-repo"
-      replicas   = 2
+      replicas   = 5  # Maximum number of runners
       labels     = ["self-hosted", "linux", "x64"]
       env = [
         {
@@ -57,23 +66,15 @@ module "arc" {
     }
   ]
   
-  # Optional: Configure autoscaling
+  # Optional: Configure autoscaling parameters
+  # (These will be used to set minRunners for the scale sets)
   runner_autoscalers = [
     {
       name              = "runner-autoscaler"
-      target_deployment = "runner-deployment"
+      target_deployment = "runner-scale-set"
       min_replicas      = 1
       max_replicas      = 5
-      metrics = [
-        {
-          type = "TotalNumberOfQueuedAndInProgressWorkflowRuns"
-          repositoryNames = ["my-org/my-repo"]
-          scaleUpThreshold = "1"
-          scaleDownThreshold = "0"
-          scaleUpFactor = "2"
-          scaleDownFactor = "0.5"
-        }
-      ]
+      metrics = []  # Not used in the new architecture
     }
   ]
 }
@@ -98,11 +99,13 @@ module "arc" {
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|:--------:|
-| github_token | GitHub Personal Access Token with appropriate permissions | `string` | n/a | yes |
+| github_token | GitHub Personal Access Token with appropriate permissions | `string` | `""` | no |
+| github_app_auth | GitHub App authentication configuration (app_id, installation_id, private_key) | `object` | `null` | no |
 | namespace | Kubernetes namespace for Actions Runner Controller | `string` | `"arc-system"` | no |
 | create_namespace | Whether to create a new namespace for ARC | `bool` | `true` | no |
-| helm_chart_version | Version of the ARC Helm chart | `string` | `"0.23.5"` | no |
+| helm_chart_version | Version of the ARC Helm chart | `string` | `"0.11.0"` | no |
 | helm_values | Additional Helm values for ARC chart (in YAML format) | `string` | `""` | no |
+| install_cert_manager | Whether to install cert-manager (no longer required for ARC 0.11.0+) | `bool` | `true` | no |
 | cert_manager_version | Version of cert-manager Helm chart | `string` | `"v1.12.0"` | no |
 | cert_manager_values | Values for cert-manager Helm chart | `string` | `""` | no |
 | add_arch_tolerations | Whether to add architecture-specific tolerations to pods | `bool` | `false` | no |
@@ -117,8 +120,7 @@ module "arc" {
 | namespace | The Kubernetes namespace where ARC was deployed |
 | cert_manager_release_name | The name of the cert-manager Helm release |
 | arc_release_name | The name of the Actions Runner Controller Helm release |
-| runner_deployments | The deployed runner deployments |
-| runner_autoscalers | The deployed runner autoscalers |
+| runner_scale_sets | The deployed runner scale sets |
 
 ## License
 

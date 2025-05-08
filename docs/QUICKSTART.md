@@ -58,7 +58,7 @@ module "arc" {
   create_namespace = true
   
   # Optional: Set chart versions
-  helm_chart_version  = "0.23.5"
+  helm_chart_version  = "0.11.0"
   cert_manager_version = "v1.12.0"
 }
 ```
@@ -88,8 +88,15 @@ kubectl get pods -n arc-system
 ```
 
 You should see pods for:
-- cert-manager (3 pods)
-- actions-runner-controller (at least 1 pod)
+- cert-manager (3 pods) - if you're using cert-manager
+- gha-runner-scale-set-controller (1 pod)
+
+You can also check the custom resources:
+
+```bash
+kubectl get autoscalingrunnersets -n arc-system
+kubectl get githubrunnerscalesetlisteners -n arc-system
+```
 
 ## Step 5: Deploy Your First Runner
 
@@ -104,7 +111,7 @@ module "arc" {
     {
       name       = "example-runner"
       repository = "your-username/your-repo"  # Change to your repo
-      replicas   = 1
+      replicas   = 5  # This sets the maximum number of runners
       labels     = ["self-hosted", "linux", "x64"]
       env = [
         {
@@ -167,7 +174,7 @@ jobs:
 
 ## Step 7: Set Up Autoscaling (Optional)
 
-Update your configuration to include an autoscaler:
+The new ARC architecture (Runner Scale Sets) has built-in autoscaling. You can configure it like this:
 
 ```hcl
 module "arc" {
@@ -177,27 +184,19 @@ module "arc" {
     {
       name       = "example-runner"
       repository = "your-username/your-repo"  # Change to your repo
-      replicas   = 1  # Base number of replicas
+      replicas   = 5  # Maximum number of runners
       # ...other settings...
     }
   ]
   
+  # Set min_replicas to configure minimum idle runners
   runner_autoscalers = [
     {
       name              = "example-autoscaler"
       target_deployment = "example-runner"
-      min_replicas      = 1
-      max_replicas      = 5
-      metrics = [
-        {
-          type = "TotalNumberOfQueuedAndInProgressWorkflowRuns"
-          repositoryNames = ["your-username/your-repo"]  # Change to your repo
-          scaleUpThreshold = "1"
-          scaleDownThreshold = "0"
-          scaleUpFactor = "2"
-          scaleDownFactor = "0.5"
-        }
-      ]
+      min_replicas      = 1  # Minimum number of idle runners
+      max_replicas      = 5  # Should match the replicas setting above
+      metrics = []  # Not used in the new architecture
     }
   ]
 }
@@ -208,12 +207,16 @@ module "arc" {
 ### Runners Not Connecting to GitHub
 
 If your runners are not showing up in GitHub:
-1. Check the runner pod logs:
+1. Check the runner scale set listener logs:
    ```bash
-   kubectl logs -n arc-system -l actions-runner=example-runner
+   kubectl logs -n arc-system -l actions.github.com/scale-set-name=example-runner -c gha-runner-scale-set-listener
    ```
-2. Verify your token has the correct permissions
-3. Ensure the repository path is correct
+2. Check the ephemeral runner pod logs:
+   ```bash
+   kubectl logs -n arc-system -l actions.github.com/scale-set-name=example-runner
+   ```
+3. Verify your token has the correct permissions
+4. Ensure the repository path is correct
 
 ### Pod Scheduling Issues
 
