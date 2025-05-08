@@ -276,7 +276,7 @@ resource "helm_release" "runner_scale_set" {
 
   set {
     name  = "minRunners"
-    value = try(var.runner_autoscalers[index(var.runner_autoscalers[*].target_deployment, var.runner_deployments[count.index].name)].min_replicas, 1)
+    value = try(local.runner_deployment_map[var.runner_deployments[count.index].name].min_replicas, 1)
   }
 
   # Enable metrics for listeners
