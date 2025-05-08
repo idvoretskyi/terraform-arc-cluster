@@ -271,7 +271,7 @@ resource "helm_release" "runner_scale_set" {
   # Configure runner scaling settings
   set {
     name  = "maxRunners"
-    value = try(var.runner_deployments[count.index].replicas, try(var.runner_autoscalers[index(var.runner_autoscalers[*].target_deployment, var.runner_deployments[count.index].name)].max_replicas, 10))
+    value = local.max_runners_value
   }
 
   set {
