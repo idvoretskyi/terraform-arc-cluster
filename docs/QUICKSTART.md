@@ -1,296 +1,120 @@
 # Quickstart Guide: GitHub Actions Runner Controller (ARC)
 
-This guide will walk you through the process of setting up GitHub Actions Runner Controller (ARC) on your Kubernetes cluster using this Terraform module.
+Deploy GitHub Actions self-hosted runners on Kubernetes with the latest ARC.
 
 ## Prerequisites
 
-Before you begin, ensure you have the following:
+- Kubernetes cluster with `kubectl` configured
+- [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli) >= 1.0.0
+- GitHub Personal Access Token
 
-- A Kubernetes cluster (local like Minikube/k3s or cloud-based)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) installed and configured
-- [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli) (v1.0.0 or newer)
-- [Helm](https://helm.sh/docs/intro/install/) (v3.0.0 or newer)
-- A GitHub account with permissions to create Personal Access Tokens
-
-## Step 1: Set Up Your GitHub Token
+## Step 1: Get Your GitHub Token
 
 1. Go to GitHub → Settings → Developer settings → [Personal access tokens](https://github.com/settings/tokens)
-2. Click "Generate new token"
-3. Give it a name like "ARC Token"
-4. Select the following scopes:
-   - For repository runners: `repo` (Full control)
-   - For organization runners: `admin:org` (Organization administration)
-5. Click "Generate token"
-6. **Copy your token immediately** - you won't be able to see it again!
+2. Generate new token with `repo` scope (for repository runners) or `admin:org` (for organization runners)
+3. Copy the token - you'll need it for the next step
 
-## Step 2: Prepare Your Terraform Configuration
+## Step 2: Quick Deploy
 
-Create a new directory for your Terraform configuration:
-
-```bash
-mkdir arc-deployment
-cd arc-deployment
-```
-
-Create a file named `main.tf` with the following content:
+Create a new file `main.tf` and replace:
+- `ghp_your_token_here` with your GitHub token
+- `your-org/your-repo` with your repository
 
 ```hcl
 provider "kubernetes" {
-  config_path    = "~/.kube/config"  # Path to your kubeconfig file
-  # If you're using a specific context, uncomment this:
-  # config_context = "my-context-name"
+  config_path = "~/.kube/config"
 }
 
 provider "helm" {
-  kubernetes {
-    config_path    = "~/.kube/config"
-    # config_context = "my-context-name"
+  kubernetes = {
+    config_path = "~/.kube/config"
   }
 }
 
 module "arc" {
-  source = "github.com/idvoretskyi/Terraform-ARC-cluster"
-  
-  github_token = "ghp_your_token_here"  # Replace with your actual token
-  
-  # Optional: Change namespace
-  namespace       = "arc-system"
-  create_namespace = true
-  
-  # Optional: Set chart versions
-  helm_chart_version  = "0.11.0"
-  cert_manager_version = "v1.12.0"
+  source = "github.com/idvoretskyi/terraform-arc-cluster//terraform"
+
+  github_token = "ghp_your_actual_token_here"
+
+  runner_deployments = [
+    {
+      name       = "my-runners"
+      repository = "my-org/my-repo"
+      replicas   = 2
+      labels     = ["self-hosted", "linux", "x64"]
+    }
+  ]
 }
 ```
 
-## Step 3: Initialize and Apply Terraform
-
-Initialize Terraform to download the module:
+## Step 3: Deploy
 
 ```bash
 terraform init
-```
-
-Apply the configuration:
-
-```bash
 terraform apply
 ```
 
-Review the changes and type `yes` to confirm.
+## Step 4: Verify
 
-## Step 4: Verify the Installation
-
-Check that all the components are running:
+Check your runners are running:
 
 ```bash
 kubectl get pods -n arc-system
 ```
 
-You should see pods for:
-- cert-manager (3 pods) - if you're using cert-manager
-- gha-runner-scale-set-controller (1 pod)
+You should see:
+- `arc-gha-rs-controller-*` (ARC controller)
+- `my-runners-*-runner-*` (Your runners)
+- `my-runners-*-listener` (GitHub webhook listener)
 
-You can also check the custom resources:
+## Step 5: Test
 
-```bash
-kubectl get autoscalingrunnersets -n arc-system
-kubectl get githubrunnerscalesetlisteners -n arc-system
-```
-
-## Step 5: Deploy Your First Runner
-
-Create a new file named `runners.tf` with the following content:
-
-```hcl
-# Update your module block in main.tf to include this configuration
-module "arc" {
-  # ...existing configuration...
-  
-  runner_deployments = [
-    {
-      name       = "example-runner"
-      repository = "your-username/your-repo"  # Change to your repo
-      replicas   = 5  # This sets the maximum number of runners
-      labels     = ["self-hosted", "linux", "x64"]
-      env = [
-        {
-          name  = "RUNNER_WORKDIR"
-          value = "/home/runner/work"
-        }
-      ]
-      resources = {
-        limits = {
-          cpu    = "500m"
-          memory = "512Mi"
-        }
-        requests = {
-          cpu    = "250m"
-          memory = "256Mi"
-        }
-      }
-    }
-  ]
-}
-```
-
-Apply the updated configuration:
-
-```bash
-terraform apply
-```
-
-## Step 6: Test Your Runner
-
-1. Go to your GitHub repository settings → Actions → Runners
-2. You should see your new runner listed
-3. Create a basic workflow in your repository:
+Create a simple workflow in your repository:
 
 ```yaml
-# .github/workflows/test-runner.yml
+# .github/workflows/test.yml
 name: Test Self-Hosted Runner
-
-on:
-  workflow_dispatch:  # Manual trigger
+on: workflow_dispatch
 
 jobs:
   test:
-    runs-on: self-hosted  # This will use your self-hosted runner
-    
+    runs-on: self-hosted
     steps:
-      - name: Check out code
-        uses: actions/checkout@v3
-        
-      - name: Run test commands
-        run: |
-          echo "Hello from self-hosted runner!"
-          hostname
-          pwd
-          ls -la
+      - run: echo "Hello from self-hosted runner!"
 ```
 
-4. Go to Actions tab in your repository and manually trigger the workflow
-5. Watch your workflow run on your self-hosted runner!
+## ARM64 Support
 
-## Step 7: Set Up Autoscaling (Optional)
-
-The new ARC architecture (Runner Scale Sets) has built-in autoscaling. You can configure it like this:
+For ARM64 clusters (Apple Silicon, AWS Graviton, etc.):
 
 ```hcl
 module "arc" {
-  # ...existing configuration...
+  source = "github.com/idvoretskyi/terraform-arc-cluster//terraform"
   
-  runner_deployments = [
-    {
-      name       = "example-runner"
-      repository = "your-username/your-repo"  # Change to your repo
-      replicas   = 5  # Maximum number of runners
-      # ...other settings...
-    }
-  ]
-  
-  # Set min_replicas to configure minimum idle runners
-  runner_autoscalers = [
-    {
-      name              = "example-autoscaler"
-      target_deployment = "example-runner"
-      min_replicas      = 1  # Minimum number of idle runners
-      max_replicas      = 5  # Should match the replicas setting above
-      metrics = []  # Not used in the new architecture
-    }
-  ]
-}
-```
-
-## Common Issues and Troubleshooting
-
-### Runners Not Connecting to GitHub
-
-If your runners are not showing up in GitHub:
-1. Check the runner scale set listener logs:
-   ```bash
-   kubectl logs -n arc-system -l actions.github.com/scale-set-name=example-runner -c gha-runner-scale-set-listener
-   ```
-2. Check the ephemeral runner pod logs:
-   ```bash
-   kubectl logs -n arc-system -l actions.github.com/scale-set-name=example-runner
-   ```
-3. Verify your token has the correct permissions
-4. Ensure the repository path is correct
-
-### Pod Scheduling Issues
-
-If pods are not being scheduled:
-```bash
-kubectl get pods -n arc-system
-kubectl describe pod -n arc-system <pod-name>
-```
-
-Look for events that indicate why scheduling failed.
-
-### Certificate Manager Issues
-
-If you see certificate-related errors:
-```bash
-kubectl get pods -n arc-system -l app=cert-manager
-kubectl logs -n arc-system -l app=cert-manager
-```
-
-## Advanced Configuration
-
-### Using Organization-Level Runners
-
-To deploy runners at the organization level:
-
-```hcl
-runner_deployments = [
-  {
-    name       = "org-runner"
-    repository = "your-org"  # Just specify the org name
-    replicas   = 2
-    # ...other settings...
-  }
-]
-```
-
-### Adding Environment Variables
-
-You can add environment variables to customize your runners:
-
-```hcl
-env = [
-  {
-    name  = "RUNNER_WORKDIR"
-    value = "/home/runner/work"
-  },
-  {
-    name  = "ACTIONS_RUNNER_HOOK_JOB_STARTED"
-    value = "/home/runner/my-script.sh"
-  }
-]
-```
-
-### Architecture-Specific Configurations
-
-For ARM64-based clusters (e.g., Apple Silicon):
-
-```hcl
-module "arc" {
-  # ...existing configuration...
+  github_token = "ghp_your_token_here"
   
   add_arch_tolerations = true
   node_architecture    = "arm64"
+  
+  runner_deployments = [
+    {
+      name       = "arm64-runners"
+      repository = "my-org/my-repo"
+      labels     = ["self-hosted", "linux", "arm64"]
+    }
+  ]
 }
 ```
 
-## Next Steps
+## Troubleshooting
 
-- Look at the [official ARC documentation](https://github.com/actions/actions-runner-controller) for advanced settings
-- Configure your CI/CD workflows to use the self-hosted runners
-- Monitor your runner performance and adjust resources as needed
+**Runners not appearing in GitHub?**
+```bash
+# Check controller logs
+kubectl logs -n arc-system -l app.kubernetes.io/name=gha-runner-scale-set-controller
 
-## Further Reading
+# Check runner logs
+kubectl logs -n arc-system -l actions.github.com/scale-set-name=my-runners
+```
 
-- [GitHub Actions Documentation](https://docs.github.com/en/actions)
-- [Terraform Documentation](https://www.terraform.io/docs)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
+**Need more help?** Check the main [README.md](../README.md) for advanced configuration options.

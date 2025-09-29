@@ -1,0 +1,26 @@
+# Example Terraform variables file
+# Copy this file to terraform.tfvars and customize with your values
+
+# GitHub Personal Access Token (required)
+github_token = "ghp_your_github_token_here"
+
+# Basic configuration
+namespace        = "arc-system"
+create_namespace = true
+helm_chart_version = "0.12.1"
+
+# Runner configuration
+runner_deployments = [
+  {
+    name       = "my-runners"
+    repository = "your-org/your-repo"  # Replace with your repository
+    replicas   = 2
+    labels     = ["self-hosted", "linux", "x64"]
+    env        = []
+    resources  = null
+  }
+]
+
+# For ARM64 clusters (uncomment if needed)
+# add_arch_tolerations = true
+# node_architecture    = "arm64"

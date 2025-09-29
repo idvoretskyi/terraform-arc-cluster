@@ -1,9 +1,9 @@
 # Repository settings managed by https://github.com/apps/settings
 
 repository:
-  name: Terraform-ARC-cluster
+  name: terraform-arc-cluster
   description: Terraform module for deploying GitHub Actions Runner Controller (ARC) on Kubernetes clusters
-  homepage: https://github.com/idvoretskyi/Terraform-ARC-cluster
+  homepage: https://github.com/idvoretskyi/terraform-arc-cluster
   private: false
   has_issues: true
   has_projects: false
@@ -69,6 +69,5 @@ topics:
   - actions-runner-controller
   - github-actions
   - helm
-  - cert-manager
   - devops
   - infrastructure-as-code
