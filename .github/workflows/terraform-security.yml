@@ -1,0 +1,88 @@
+name: "Terraform Security Analysis"
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-security.yml'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'terraform/**'
+      - '.github/workflows/terraform-security.yml'
+  schedule:
+    - cron: '30 2 * * 1'  # Mondays at 2:30 AM UTC
+
+jobs:
+  terraform-security:
+    name: Terraform Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ~1.0
+
+    - name: Terraform Format Check
+      run: terraform fmt -check -recursive terraform/
+      continue-on-error: true
+
+    - name: Terraform Validate
+      run: |
+        cd terraform
+        terraform init -backend=false
+        terraform validate
+
+    - name: Run tfsec
+      uses: aquasecurity/tfsec-action@v1.0.3
+      with:
+        working_directory: terraform
+        soft_fail: true
+        format: sarif
+        additional_args: --exclude-downloaded-modules
+
+    - name: Upload tfsec results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: tfsec.sarif
+
+    - name: Run Trivy vulnerability scanner in IaC mode
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'config'
+        scan-ref: 'terraform'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+        severity: 'CRITICAL,HIGH,MEDIUM'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+    - name: Run Checkov action
+      uses: bridgecrewio/checkov-action@master
+      with:
+        directory: terraform
+        quiet: true
+        soft_fail: true
+        framework: terraform
+        output_format: sarif
+        output_file_path: reports/results.sarif
+
+    - name: Upload Checkov results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: reports/results.sarif
