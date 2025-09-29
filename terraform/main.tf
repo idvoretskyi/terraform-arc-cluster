@@ -12,6 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Validation: Ensure at least one authentication method is provided
+locals {
+  has_github_token = var.github_token != ""
+  has_github_app   = var.github_app_auth != null
+}
+
+# This check will cause Terraform plan to fail if no authentication is provided
+check "authentication_required" {
+  assert {
+    condition     = local.has_github_token || local.has_github_app
+    error_message = "Authentication error: Either 'github_token' or 'github_app_auth' must be provided. Configure one of these authentication methods before applying."
+  }
+}
+
 locals {
   namespace_name = var.create_namespace ? kubernetes_namespace.arc_system[0].metadata[0].name : var.namespace
 }
@@ -81,7 +95,7 @@ resource "helm_release" "runner_scale_set" {
         } : {}
       )
 
-      runnerLabels = length(var.runner_deployments[count.index].labels) > 0 ? var.runner_deployments[count.index].labels : []
+      runnerLabels = var.runner_deployments[count.index].labels
 
       template = {
         spec = {

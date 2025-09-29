@@ -1,10 +1,10 @@
 # GitHub Actions Runner Controller (ARC) Terraform Module
 
-Deploy self-hosted GitHub Actions runners on Kubernetes using the latest Actions Runner Controller (ARC) 0.12.1.
+Deploy self-hosted GitHub Actions runners on Kubernetes using the latest Actions Runner Controller (ARC).
 
 ## Features
 
-- **Latest ARC 0.12.1** with autoscaling runner scale sets
+- **Latest ARC** with autoscaling runner scale sets
 - **Multi-architecture support** (amd64/arm64) 
 - **Simple configuration** with sensible defaults
 - **Production ready** with proper resource management
@@ -136,6 +136,8 @@ terraform-arc-cluster/
 | Kubernetes Provider | >= 2.30.0 |
 | Helm Provider | >= 3.0.0 |
 
+> **Note:** This module defaults to the latest stable ARC version. Check [ARC Releases](https://github.com/actions/actions-runner-controller/releases) for newer versions.
+
 ## Input Variables
 
 | Name | Description | Type | Default |
@@ -144,7 +146,7 @@ terraform-arc-cluster/
 | **runner_deployments** | Runner configurations | `list(object)` | `[]` |
 | namespace | Kubernetes namespace | `string` | `"arc-system"` |
 | create_namespace | Create namespace if it doesn't exist | `bool` | `true` |
-| helm_chart_version | ARC chart version | `string` | `"0.12.1"` |
+| helm_chart_version | ARC chart version (defaults to latest stable) | `string` | `"0.12.1"` |
 | add_arch_tolerations | Add architecture-specific tolerations | `bool` | `false` |
 | node_architecture | Node architecture (amd64/arm64) | `string` | `"amd64"` |
 

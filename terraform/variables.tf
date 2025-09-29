@@ -46,7 +46,7 @@ variable "github_app_auth" {
 
 # Helm chart configuration
 variable "helm_chart_version" {
-  description = "Version of the ARC Helm chart"
+  description = "Version of the ARC Helm chart. Defaults to latest stable release"
   type        = string
   default     = "0.12.1"
 }

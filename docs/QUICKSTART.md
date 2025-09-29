@@ -1,6 +1,6 @@
 # Quickstart Guide: GitHub Actions Runner Controller (ARC)
 
-Deploy GitHub Actions self-hosted runners on Kubernetes with ARC 0.12.1.
+Deploy GitHub Actions self-hosted runners on Kubernetes with the latest ARC.
 
 ## Prerequisites
 
