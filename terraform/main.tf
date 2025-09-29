@@ -81,7 +81,7 @@ resource "helm_release" "runner_scale_set" {
   values = [
     yamlencode({
       githubConfigUrl = "https://github.com/${var.runner_deployments[count.index].repository}"
-      maxRunners      = var.runner_deployments[count.index].replicas
+      maxRunners      = var.runner_deployments[count.index].replicas != null ? var.runner_deployments[count.index].replicas : 10
       minRunners      = 1
 
       githubConfigSecret = merge(
@@ -95,7 +95,7 @@ resource "helm_release" "runner_scale_set" {
         } : {}
       )
 
-      runnerLabels = var.runner_deployments[count.index].labels
+      runnerLabels = var.runner_deployments[count.index].labels != null ? var.runner_deployments[count.index].labels : ["self-hosted", "terraform-managed"]
 
       template = {
         spec = {
