@@ -81,12 +81,12 @@ variable "runner_deployments" {
   type = list(object({
     name       = string
     repository = string
-    replicas   = optional(number, 10)
-    labels     = optional(list(string), ["self-hosted", "terraform-managed"])
+    replicas   = optional(number)
+    labels     = optional(list(string))
     env = optional(list(object({
       name  = string
       value = string
-    })), null)
+    })))
     resources = optional(object({
       limits = object({
         cpu    = string
@@ -96,7 +96,7 @@ variable "runner_deployments" {
         cpu    = string
         memory = string
       })
-    }), null)
+    }))
   }))
   default = []
 }
