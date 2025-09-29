@@ -70,8 +70,8 @@ jobs:
         
         # Enhanced query packs for comprehensive security analysis
         queries: |
-          security-extended
-          security-and-quality
+          +security-extended
+          +security-and-quality
 
     # For JavaScript/TypeScript analysis of YAML files (GitHub Actions)
     - name: Setup Node.js for JavaScript analysis

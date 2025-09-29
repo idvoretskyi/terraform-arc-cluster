@@ -8,8 +8,8 @@ disable-default-queries: false
 
 # Additional queries to run beyond the default set
 queries:
-  - uses: security-extended
-  - uses: security-and-quality
+  - uses: +security-extended
+  - uses: +security-and-quality
 
 # Paths to include in analysis
 paths:
