@@ -69,6 +69,5 @@ topics:
   - actions-runner-controller
   - github-actions
   - helm
-  - cert-manager
   - devops
   - infrastructure-as-code

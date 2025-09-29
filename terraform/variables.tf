@@ -36,11 +36,11 @@ variable "github_token" {
 variable "github_app_auth" {
   description = "GitHub App authentication configuration. Only used if github_token is not provided."
   type = object({
-    app_id             = string
-    installation_id    = string
-    private_key        = string
+    app_id          = string
+    installation_id = string
+    private_key     = string
   })
-  default = null
+  default   = null
   sensitive = true
 }
 
@@ -48,7 +48,7 @@ variable "github_app_auth" {
 variable "helm_chart_version" {
   description = "Version of the ARC Helm chart"
   type        = string
-  default     = "0.11.0"
+  default     = "0.12.1"
 }
 
 variable "helm_values" {
@@ -57,23 +57,6 @@ variable "helm_values" {
   default     = ""
 }
 
-variable "cert_manager_version" {
-  description = "Version of cert-manager Helm chart"
-  type        = string
-  default     = "v1.12.0"
-}
-
-variable "cert_manager_values" {
-  description = "Values for cert-manager Helm chart"
-  type        = string
-  default     = ""
-}
-
-variable "install_cert_manager" {
-  description = "Whether to install cert-manager (no longer required for ARC 0.11.0+)"
-  type        = bool
-  default     = true
-}
 
 # Node architecture configuration
 variable "add_arch_tolerations" {
@@ -98,13 +81,13 @@ variable "runner_deployments" {
   type = list(object({
     name       = string
     repository = string
-    replicas   = number
-    labels     = list(string)
-    env = list(object({
+    replicas   = optional(number, 10)
+    labels     = optional(list(string), ["self-hosted", "terraform-managed"])
+    env = optional(list(object({
       name  = string
       value = string
-    }))
-    resources = object({
+    })), null)
+    resources = optional(object({
       limits = object({
         cpu    = string
         memory = string
@@ -113,7 +96,7 @@ variable "runner_deployments" {
         cpu    = string
         memory = string
       })
-    })
+    }), null)
   }))
   default = []
 }

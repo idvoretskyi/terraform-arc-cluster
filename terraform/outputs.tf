@@ -17,10 +17,6 @@ output "namespace" {
   value       = var.create_namespace ? kubernetes_namespace.arc_system[0].metadata[0].name : var.namespace
 }
 
-output "cert_manager_release_name" {
-  description = "The name of the cert-manager Helm release"
-  value       = var.install_cert_manager ? helm_release.cert_manager[0].name : null
-}
 
 output "arc_release_name" {
   description = "The name of the Actions Runner Controller Helm release"

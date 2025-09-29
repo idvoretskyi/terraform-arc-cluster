@@ -23,8 +23,9 @@ override.tf.json
 .terraformrc
 terraform.rc
 
-# Ignore lock files
-.terraform.lock.hcl
+# Ignore lock files (but allow in module for version pinning)
+/.terraform.lock.hcl
+**/examples/.terraform.lock.hcl
 
 # Ignore any local environment files
 .envrc
@@ -41,3 +42,21 @@ terraform.rc
 .DS_Store
 .directory
 Thumbs.db
+
+# GitHub token files or any credentials
+github_token.txt
+*.pem
+*.key
+credentials.*
+
+# Local test/development directories
+test/
+dev/
+local/
+
+# Claude AI assistant files
+.claude/
+claude-*
+CLAUDE.md
+*.claude
+.cursor/
