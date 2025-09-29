@@ -69,14 +69,9 @@ jobs:
         config-file: ./.github/codeql/codeql-config.yml
         
         # Enhanced query packs for comprehensive security analysis
-        queries: >-
-          security-extended,
+        queries: |
+          security-extended
           security-and-quality
-        
-        # Additional packs for infrastructure security
-        packs: >-
-          codeql/${{ matrix.language }}-queries:AlertSuppression,
-          codeql/${{ matrix.language }}-queries:Security
 
     # For JavaScript/TypeScript analysis of YAML files (GitHub Actions)
     - name: Setup Node.js for JavaScript analysis
