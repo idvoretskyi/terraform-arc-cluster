@@ -22,5 +22,5 @@ jobs:
         with:
           # Optionally add configuration options here
           fail-on-severity: moderate
-          allow-licenses: MIT, Apache-2.0, BSD-3-Clause, BSD-2-Clause, ISC, 0BSD
+          allow-licenses: MIT, Apache-2.0, BSD-3-Clause, BSD-2-Clause, ISC, 0BSD, MPL-2.0
           comment-summary-in-pr: always
