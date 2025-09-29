@@ -1,0 +1,28 @@
+# CodeQL Query Pack for Infrastructure Security
+# This pack includes additional queries specifically for infrastructure code
+
+name: "infrastructure-security"
+version: "1.0.0"  
+description: "Security queries for infrastructure and DevOps code"
+
+# Dependencies
+dependencies:
+  codeql/javascript-queries: "*"
+  codeql/python-queries: "*"
+
+# Default suite configuration
+defaultSuiteFile: "infrastructure-security.qls"
+
+# Query groups
+groups:
+  - name: "secrets-detection"
+    description: "Detect hardcoded secrets and credentials"
+    
+  - name: "github-actions-security" 
+    description: "Security issues in GitHub Actions workflows"
+    
+  - name: "terraform-security"
+    description: "Security issues in Terraform configurations"
+    
+  - name: "yaml-security"
+    description: "Security issues in YAML configurations"
