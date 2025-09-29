@@ -184,7 +184,3 @@ terraform-arc-cluster/
 ## License
 
 Apache License 2.0 - see [LICENSE](LICENSE)
-
-## Author
-
-**Ihor Dvoretskyi** - DevOps Engineer
