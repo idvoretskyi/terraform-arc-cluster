@@ -45,7 +45,6 @@ This directory contains the CodeQL configuration for comprehensive security anal
 
 ### Built-in Packs
 - `codeql/javascript-queries:Security` - Standard JavaScript security queries
-- `codeql/javascript-queries:AlertSuppression` - Alert management
 - `codeql/python-queries:Security` - Standard Python security queries
 
 ### Custom Packs
