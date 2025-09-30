@@ -54,10 +54,10 @@ When using this Terraform module:
 
 This repository includes:
 
-- **Dependabot**: Automatic dependency updates
-- **CodeQL**: Static code analysis
-- **Terraform Security**: tfsec, Trivy, and Checkov scanning
+- **Dependabot**: Automatic dependency updates for Terraform and GitHub Actions
+- **Terraform Security**: tfsec, Trivy, and Checkov scanning for infrastructure security
 - **Dependency Review**: PR-based dependency vulnerability scanning
+- **GitHub Actions Security**: Automated security scanning of workflow configurations
 
 ## Contact
 
