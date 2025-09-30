@@ -1,0 +1,56 @@
+# Infrastructure Security Query Suite
+# Defines which queries to run for infrastructure code analysis
+
+- description: "Infrastructure Security Analysis"
+
+# Include default security queries
+- include:
+    kind: problem
+    tags: security
+
+# Include specific security query packs
+- include:
+    kind: problem
+    query path: 
+      - codeql/javascript-queries/Security/CWE-020
+      - codeql/javascript-queries/Security/CWE-079  
+      - codeql/javascript-queries/Security/CWE-089
+      - codeql/javascript-queries/Security/CWE-094
+      - codeql/javascript-queries/Security/CWE-200
+      - codeql/javascript-queries/Security/CWE-295
+      - codeql/javascript-queries/Security/CWE-312
+      - codeql/javascript-queries/Security/CWE-327
+      - codeql/javascript-queries/Security/CWE-338
+      - codeql/javascript-queries/Security/CWE-352
+      - codeql/javascript-queries/Security/CWE-434
+      - codeql/javascript-queries/Security/CWE-502
+      - codeql/javascript-queries/Security/CWE-611
+      - codeql/javascript-queries/Security/CWE-643
+      - codeql/javascript-queries/Security/CWE-730
+      - codeql/javascript-queries/Security/CWE-776
+      - codeql/javascript-queries/Security/CWE-798
+      - codeql/javascript-queries/Security/CWE-807
+      - codeql/javascript-queries/Security/CWE-918
+
+# Include hardcoded credentials detection
+- include:
+    tags: "external/cwe/cwe-798"
+
+# Include command injection queries  
+- include:
+    tags: "external/cwe/cwe-078"
+    
+# Include path traversal queries
+- include:
+    tags: "external/cwe/cwe-022"
+
+# Include prototype pollution queries (JavaScript specific)
+- include:
+    tags: "external/cwe/cwe-1321"
+
+# Exclude low-priority findings for cleaner results
+- exclude:
+    tags: "external/cwe/cwe-116"  # Improper encoding/escaping (often false positives)
+    
+- exclude:
+    tags: "external/cwe/cwe-209"  # Information exposure through error messages (often low risk)
