@@ -57,7 +57,7 @@ jobs:
         sarif_file: tfsec.sarif
 
     - name: Run Trivy vulnerability scanner in IaC mode
-      uses: aquasecurity/trivy-action@v0.19.0
+      uses: aquasecurity/trivy-action@0.33.1
       with:
         scan-type: 'config'
         scan-ref: 'terraform'
