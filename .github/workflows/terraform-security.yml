@@ -30,8 +30,11 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
-        # minimum required Terraform version is 1.6
-        terraform_version: '>=1.6.0 <2.0.0'
+        # Pin to a Terraform version that supports "check" blocks
+        terraform_version: '1.6.0'
+
+    - name: Show Terraform version
+      run: terraform -v
 
     - name: Terraform Format Check
       run: terraform fmt -check -recursive terraform/
