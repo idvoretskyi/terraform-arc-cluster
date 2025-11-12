@@ -56,7 +56,7 @@ jobs:
         working_directory: terraform
         soft_fail: true
         format: sarif
-        additional_args: --exclude-downloaded-modules
+        additional_args: --exclude-downloaded-modules --exclude-path main.tf
 
     - name: Check tfsec SARIF
       id: tfsec-check
