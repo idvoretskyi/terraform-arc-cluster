@@ -51,13 +51,6 @@ variable "helm_chart_version" {
   default     = "0.12.1"
 }
 
-variable "helm_values" {
-  description = "Additional Helm values for ARC chart (in YAML format)"
-  type        = string
-  default     = ""
-}
-
-
 # Node architecture configuration
 variable "add_arch_tolerations" {
   description = "Whether to add architecture-specific tolerations to pods"
@@ -101,16 +94,3 @@ variable "runner_deployments" {
   default = []
 }
 
-variable "runner_autoscalers" {
-  description = "List of runner autoscaler configurations"
-  type = list(object({
-    name              = string
-    target_deployment = string
-    min_replicas      = number
-    max_replicas      = number
-    metrics           = list(map(any))
-  }))
-  default = []
-}
-
-# Remove Kubernetes configuration variables as they should be set in the root module

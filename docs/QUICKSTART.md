@@ -5,7 +5,7 @@ Deploy GitHub Actions self-hosted runners on Kubernetes with the latest ARC.
 ## Prerequisites
 
 - Kubernetes cluster with `kubectl` configured
-- [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli) >= 1.0.0
+- [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli) >= 1.6.0
 - GitHub Personal Access Token
 
 ## Step 1: Get Your GitHub Token
