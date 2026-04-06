@@ -132,7 +132,7 @@ terraform-arc-cluster/
 
 | Tool | Version |
 |------|---------|
-| Terraform | >= 1.0.0 |
+| Terraform | >= 1.6.0 |
 | Kubernetes Provider | >= 2.30.0 |
 | Helm Provider | >= 3.0.0 |
 

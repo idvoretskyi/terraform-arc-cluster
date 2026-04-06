@@ -30,7 +30,7 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v3
       with:
-        terraform_version: ~1.0
+        terraform_version: ~1.6
 
     - name: Terraform Format Check
       run: terraform fmt -check -recursive terraform/
@@ -41,22 +41,6 @@ jobs:
         cd terraform
         terraform init -backend=false
         terraform validate
-
-    - name: Run tfsec
-      uses: aquasecurity/tfsec-action@v1.0.3
-      with:
-        working_directory: terraform
-        soft_fail: true
-        format: sarif
-        additional_args: --exclude-downloaded-modules
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    - name: Upload tfsec results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v4
-      if: always()
-      with:
-        sarif_file: tfsec.sarif
 
     - name: Run Trivy vulnerability scanner in IaC mode
       uses: aquasecurity/trivy-action@0.33.1
@@ -71,7 +55,7 @@ jobs:
 
     - name: Upload Trivy scan results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v4
-      if: always()
+      if: always() && hashFiles('trivy-results.sarif') != ''
       with:
         sarif_file: 'trivy-results.sarif'
 
@@ -87,6 +71,6 @@ jobs:
 
     - name: Upload Checkov results to GitHub Security tab
       uses: github/codeql-action/upload-sarif@v4
-      if: always()
+      if: always() && hashFiles('reports/results.sarif') != ''
       with:
         sarif_file: reports/results.sarif
