@@ -1,13 +1,13 @@
 # GitHub Actions Runner Controller (ARC) Terraform Module
 
-Deploy self-hosted GitHub Actions runners on Kubernetes using the latest Actions Runner Controller (ARC).
+Deploy self-hosted GitHub Actions runners on Kubernetes using the Actions Runner Controller (ARC).
 
 ## Features
 
-- **Latest ARC** with autoscaling runner scale sets
-- **Multi-architecture support** (amd64/arm64) 
-- **Simple configuration** with sensible defaults
-- **Production ready** with proper resource management
+- Autoscaling runner scale sets via the latest ARC Helm charts
+- Multi-architecture support (amd64 / arm64)
+- GitHub PAT and GitHub App authentication
+- Simple configuration with sensible defaults
 
 ## Quick Start
 
@@ -36,34 +36,24 @@ module "arc" {
 }
 ```
 
-## Examples
+Then deploy:
 
-### Basic Configuration
-```hcl
-module "arc" {
-  source = "github.com/idvoretskyi/terraform-arc-cluster//terraform"
-
-  github_token = var.github_token
-
-  runner_deployments = [
-    {
-      name       = "default-runners"
-      repository = "my-org/my-repo"
-      replicas   = 2
-      labels     = ["self-hosted", "linux", "x64"]
-    }
-  ]
-}
+```bash
+terraform init
+terraform apply
 ```
 
-### ARM64 Cluster Support
+See the [Quickstart Guide](docs/QUICKSTART.md) for step-by-step instructions including verification and testing.
+
+## Examples
+
+### ARM64 Cluster
+
 ```hcl
 module "arc" {
   source = "github.com/idvoretskyi/terraform-arc-cluster//terraform"
 
-  github_token = var.github_token
-  
-  # ARM64 cluster configuration
+  github_token         = var.github_token
   add_arch_tolerations = true
   node_architecture    = "arm64"
 
@@ -78,6 +68,7 @@ module "arc" {
 ```
 
 ### Production Setup
+
 ```hcl
 module "arc" {
   source = "github.com/idvoretskyi/terraform-arc-cluster//terraform"
@@ -93,39 +84,37 @@ module "arc" {
       labels     = ["self-hosted", "linux", "x64", "production"]
 
       resources = {
-        limits = {
-          cpu    = "2000m"
-          memory = "4Gi"
-        }
-        requests = {
-          cpu    = "1000m"
-          memory = "2Gi"
-        }
+        limits   = { cpu = "2000m", memory = "4Gi" }
+        requests = { cpu = "1000m", memory = "2Gi" }
       }
 
       env = [
-        {
-          name  = "RUNNER_WORKDIR"
-          value = "/home/runner/work"
-        }
+        { name = "RUNNER_WORKDIR", value = "/home/runner/work" }
       ]
     }
   ]
 }
 ```
 
-## Repository Structure
+### GitHub App Authentication
 
-```
-terraform-arc-cluster/
-├── terraform/          # Main Terraform module
-│   ├── main.tf         # Core resources
-│   ├── variables.tf    # Input variables
-│   ├── outputs.tf      # Output values
-│   └── versions.tf     # Provider requirements
-├── docs/               # Documentation
-│   └── QUICKSTART.md
-└── README.md          # This file
+```hcl
+module "arc" {
+  source = "github.com/idvoretskyi/terraform-arc-cluster//terraform"
+
+  github_app_auth = {
+    app_id          = "123456"
+    installation_id = "78901234"
+    private_key     = file("path/to/private-key.pem")
+  }
+
+  runner_deployments = [
+    {
+      name       = "my-runners"
+      repository = "my-org/my-repo"
+    }
+  ]
+}
 ```
 
 ## Requirements
@@ -136,51 +125,41 @@ terraform-arc-cluster/
 | Kubernetes Provider | >= 2.30.0 |
 | Helm Provider | >= 3.0.0 |
 
-> **Note:** This module defaults to the latest stable ARC version. Check [ARC Releases](https://github.com/actions/actions-runner-controller/releases) for newer versions.
-
 ## Input Variables
 
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
-| **github_token** | GitHub Personal Access Token | `string` | `""` |
-| **runner_deployments** | Runner configurations | `list(object)` | `[]` |
-| namespace | Kubernetes namespace | `string` | `"arc-system"` |
-| create_namespace | Create namespace if it doesn't exist | `bool` | `true` |
-| helm_chart_version | ARC chart version (defaults to latest stable) | `string` | `"0.12.1"` |
-| add_arch_tolerations | Add architecture-specific tolerations | `bool` | `false` |
-| node_architecture | Node architecture (amd64/arm64) | `string` | `"amd64"` |
+| `github_token` | GitHub Personal Access Token | `string` | `""` |
+| `github_app_auth` | GitHub App auth (app_id, installation_id, private_key) | `object` | `null` |
+| `runner_deployments` | List of runner configurations | `list(object)` | `[]` |
+| `namespace` | Kubernetes namespace | `string` | `"arc-system"` |
+| `create_namespace` | Create the namespace if it doesn't exist | `bool` | `true` |
+| `helm_chart_version` | ARC Helm chart version | `string` | `"0.12.1"` |
+| `add_arch_tolerations` | Add architecture-specific tolerations | `bool` | `false` |
+| `node_architecture` | Node architecture (`amd64` or `arm64`) | `string` | `"amd64"` |
 
 ## Outputs
 
 | Name | Description |
 |------|-------------|
-| namespace | Deployed namespace |
-| arc_release_name | ARC Helm release name |
-| runner_scale_sets | List of deployed runner scale sets |
+| `namespace` | Deployed namespace |
+| `arc_release_name` | ARC Helm release name |
+| `runner_scale_sets` | List of deployed runner scale set names |
 
-## Getting Started
+## Repository Structure
 
-1. **Check the quickstart guide:**
-   ```bash
-   # View online: https://github.com/idvoretskyi/terraform-arc-cluster/blob/main/docs/QUICKSTART.md
-   ```
-
-2. **Use the module directly:**
-   ```hcl
-   module "arc" {
-     source = "github.com/idvoretskyi/terraform-arc-cluster//terraform"
-     
-     github_token = "ghp_your_token_here"
-     
-     runner_deployments = [
-       {
-         name       = "my-runners"
-         repository = "your-org/your-repo"
-       }
-     ]
-   }
-   ```
+```
+terraform-arc-cluster/
+├── terraform/          # Terraform module
+│   ├── main.tf         # Core resources
+│   ├── variables.tf    # Input variables
+│   ├── outputs.tf      # Output values
+│   └── versions.tf     # Provider requirements
+├── docs/
+│   └── QUICKSTART.md   # Step-by-step guide
+└── README.md
+```
 
 ## License
 
-Apache License 2.0 - see [LICENSE](LICENSE)
+Apache License 2.0 — see [LICENSE](LICENSE)
