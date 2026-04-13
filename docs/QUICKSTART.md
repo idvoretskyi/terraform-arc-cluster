@@ -1,24 +1,22 @@
-# Quickstart Guide: GitHub Actions Runner Controller (ARC)
+# Quickstart Guide
 
-Deploy GitHub Actions self-hosted runners on Kubernetes with the latest ARC.
+Deploy GitHub Actions self-hosted runners on Kubernetes with the Actions Runner Controller (ARC).
 
 ## Prerequisites
 
 - Kubernetes cluster with `kubectl` configured
-- [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli) >= 1.6.0
-- GitHub Personal Access Token
+- [Terraform](https://developer.hashicorp.com/terraform/install) >= 1.6.0
+- GitHub Personal Access Token with `repo` scope (for repository runners) or `admin:org` (for org runners)
 
 ## Step 1: Get Your GitHub Token
 
 1. Go to GitHub → Settings → Developer settings → [Personal access tokens](https://github.com/settings/tokens)
-2. Generate new token with `repo` scope (for repository runners) or `admin:org` (for organization runners)
-3. Copy the token - you'll need it for the next step
+2. Generate a new token with the appropriate scope
+3. Keep the token handy for the next step
 
-## Step 2: Quick Deploy
+## Step 2: Create Your Configuration
 
-Create a new file `main.tf` and replace:
-- `ghp_your_token_here` with your GitHub token
-- `your-org/your-repo` with your repository
+Create `main.tf` and replace the placeholder values with your token and repository:
 
 ```hcl
 provider "kubernetes" {
@@ -34,14 +32,12 @@ provider "helm" {
 module "arc" {
   source = "github.com/idvoretskyi/terraform-arc-cluster//terraform"
 
-  github_token = "ghp_your_actual_token_here"
+  github_token = "ghp_your_token_here"
 
   runner_deployments = [
     {
       name       = "my-runners"
       repository = "my-org/my-repo"
-      replicas   = 2
-      labels     = ["self-hosted", "linux", "x64"]
     }
   ]
 }
@@ -56,20 +52,19 @@ terraform apply
 
 ## Step 4: Verify
 
-Check your runners are running:
-
 ```bash
 kubectl get pods -n arc-system
 ```
 
 You should see:
-- `arc-gha-rs-controller-*` (ARC controller)
-- `my-runners-*-runner-*` (Your runners)
-- `my-runners-*-listener` (GitHub webhook listener)
+
+- `arc-gha-rs-controller-*` — ARC controller
+- `my-runners-*-runner-*` — your runners
+- `my-runners-*-listener` — GitHub webhook listener
 
 ## Step 5: Test
 
-Create a simple workflow in your repository:
+Add this workflow to your repository to confirm runners are working:
 
 ```yaml
 # .github/workflows/test.yml
@@ -90,12 +85,11 @@ For ARM64 clusters (Apple Silicon, AWS Graviton, etc.):
 ```hcl
 module "arc" {
   source = "github.com/idvoretskyi/terraform-arc-cluster//terraform"
-  
-  github_token = "ghp_your_token_here"
-  
+
+  github_token         = "ghp_your_token_here"
   add_arch_tolerations = true
   node_architecture    = "arm64"
-  
+
   runner_deployments = [
     {
       name       = "arm64-runners"
@@ -109,6 +103,7 @@ module "arc" {
 ## Troubleshooting
 
 **Runners not appearing in GitHub?**
+
 ```bash
 # Check controller logs
 kubectl logs -n arc-system -l app.kubernetes.io/name=gha-runner-scale-set-controller
@@ -117,4 +112,4 @@ kubectl logs -n arc-system -l app.kubernetes.io/name=gha-runner-scale-set-contro
 kubectl logs -n arc-system -l actions.github.com/scale-set-name=my-runners
 ```
 
-**Need more help?** Check the main [README.md](../README.md) for advanced configuration options.
+For more configuration options, see the [README](../README.md).
