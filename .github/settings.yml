@@ -58,6 +58,9 @@ labels:
   - name: dependencies
     color: 0366d6
     description: Pull requests that update a dependency file
+  - name: github-actions
+    color: 2088ff
+    description: Pull requests that update GitHub Actions workflows
   - name: terraform
     color: 5319e7
     description: Related to Terraform configurations
